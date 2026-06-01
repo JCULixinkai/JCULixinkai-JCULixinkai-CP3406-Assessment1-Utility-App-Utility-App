@@ -1,0 +1,14 @@
+*.iml
+.gradle
+.idea
+.kotlin
+local.properties
+build
+captures
+app/build
+.gradle-sandbox
+.omx
+.tmp
+.tmp-*.png
+.tmp-ready-screen*.png
+.DS_Store
