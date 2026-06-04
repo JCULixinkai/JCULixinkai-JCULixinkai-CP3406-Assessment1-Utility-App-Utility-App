@@ -107,6 +107,15 @@ fun UtilityScreen(
                         ),
                     )
                 }
+                if (state.snapshot.isFallback) {
+                    item {
+                        Text(
+                            text = "Using an offline estimate because live weather did not respond. Refresh when the connection is stable.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
                 item {
                     SectionHeading(
                         title = "Current conditions",

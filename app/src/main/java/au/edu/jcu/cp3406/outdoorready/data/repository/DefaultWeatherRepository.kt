@@ -4,9 +4,12 @@ import au.edu.jcu.cp3406.outdoorready.data.remote.OpenMeteoApiService
 import au.edu.jcu.cp3406.outdoorready.data.remote.dto.LocationResultDto
 import au.edu.jcu.cp3406.outdoorready.model.DisplayPreferences
 import au.edu.jcu.cp3406.outdoorready.model.WeatherSnapshot
+import com.squareup.moshi.JsonDataException
+import com.squareup.moshi.JsonEncodingException
 import java.io.IOException
 import java.time.Instant
 import javax.inject.Inject
+import retrofit2.HttpException
 
 class DefaultWeatherRepository @Inject constructor(
     private val apiService: OpenMeteoApiService,
@@ -57,11 +60,32 @@ class DefaultWeatherRepository @Inject constructor(
 
             WeatherLoadResult.Success(snapshot)
         } catch (_: IOException) {
-            WeatherLoadResult.Failure("Check your connection and try again.")
+            WeatherLoadResult.Success(offlineSnapshot(locationQuery))
+        } catch (exception: HttpException) {
+            WeatherLoadResult.Failure(
+                "Weather service returned error ${exception.code()}. Try refreshing in a moment.",
+            )
+        } catch (_: JsonDataException) {
+            WeatherLoadResult.Failure("Weather data changed format. Try refreshing in a moment.")
+        } catch (_: JsonEncodingException) {
+            WeatherLoadResult.Failure("Weather data could not be read. Try refreshing in a moment.")
         } catch (_: Exception) {
-            WeatherLoadResult.Failure("Couldn't load the latest conditions.")
+            WeatherLoadResult.Failure("Couldn't load the latest conditions. Try refreshing in a moment.")
         }
     }
+
+    private fun offlineSnapshot(locationQuery: String): WeatherSnapshot =
+        WeatherSnapshot(
+            locationName = locationQuery.ifBlank { "Townsville" },
+            conditionLabel = "Offline estimate",
+            temperatureCelsius = 26.0,
+            feelsLikeCelsius = 27.0,
+            rainChance = 20,
+            uvIndex = 4.0,
+            windSpeedKph = 12.0,
+            fetchedAt = Instant.now(),
+            isFallback = true,
+        )
 
     private fun LocationResultDto.displayName(): String =
         listOfNotNull(name, admin1).distinct().joinToString(", ")
@@ -79,4 +103,3 @@ class DefaultWeatherRepository @Inject constructor(
             else -> "Unsettled"
         }
 }
-

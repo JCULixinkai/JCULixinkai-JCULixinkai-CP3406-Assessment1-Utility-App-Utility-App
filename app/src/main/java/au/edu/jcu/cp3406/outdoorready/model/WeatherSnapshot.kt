@@ -11,5 +11,5 @@ data class WeatherSnapshot(
     val uvIndex: Double,
     val windSpeedKph: Double,
     val fetchedAt: Instant,
+    val isFallback: Boolean = false,
 )
-
