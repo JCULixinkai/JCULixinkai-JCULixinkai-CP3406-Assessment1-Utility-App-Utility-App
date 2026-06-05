@@ -4,6 +4,7 @@ import au.edu.jcu.cp3406.outdoorready.model.AdviceSensitivity
 import au.edu.jcu.cp3406.outdoorready.model.DisplayPreferences
 import au.edu.jcu.cp3406.outdoorready.model.ReadinessSummary
 import au.edu.jcu.cp3406.outdoorready.model.SummarySeverity
+import au.edu.jcu.cp3406.outdoorready.model.TemperatureUnit
 import au.edu.jcu.cp3406.outdoorready.model.WeatherSnapshot
 import javax.inject.Inject
 
@@ -21,7 +22,7 @@ class ReadinessEvaluator @Inject constructor() {
                 advice = listOf(
                     "Carry an umbrella or rain jacket.",
                     "Allow extra time if you are commuting.",
-                ),
+                ) + secondaryAdvice(snapshot, thresholds, PrimaryRisk.Rain, preferences),
                 severity = SummarySeverity.High,
             )
 
@@ -31,7 +32,7 @@ class ReadinessEvaluator @Inject constructor() {
                 advice = listOf(
                     "Use sunscreen before you leave.",
                     "Bring sunglasses or a hat.",
-                ),
+                ) + secondaryAdvice(snapshot, thresholds, PrimaryRisk.Uv, preferences),
                 severity = SummarySeverity.High,
             )
 
@@ -41,17 +42,17 @@ class ReadinessEvaluator @Inject constructor() {
                 advice = listOf(
                     "Secure loose items before heading out.",
                     "Expect stronger gusts in open areas.",
-                ),
+                ) + secondaryAdvice(snapshot, thresholds, PrimaryRisk.Wind, preferences),
                 severity = SummarySeverity.Moderate,
             )
 
             snapshot.feelsLikeCelsius >= thresholds.feelsLikeCelsius -> ReadinessSummary(
                 headline = "Warm Conditions",
-                reason = "It feels like ${snapshot.feelsLikeCelsius.format(0)} C outside.",
+                reason = "It feels like ${formatTemperature(snapshot.feelsLikeCelsius, preferences.temperatureUnit)} outside.",
                 advice = listOf(
                     "Bring water if you will be outside for a while.",
                     "Light clothing will feel more comfortable.",
-                ),
+                ) + secondaryAdvice(snapshot, thresholds, PrimaryRisk.Heat, preferences),
                 severity = SummarySeverity.Moderate,
             )
 
@@ -98,7 +99,42 @@ class ReadinessEvaluator @Inject constructor() {
         val feelsLikeCelsius: Double,
     )
 
+    private enum class PrimaryRisk {
+        Rain,
+        Uv,
+        Wind,
+        Heat,
+    }
+
+    private fun secondaryAdvice(
+        snapshot: WeatherSnapshot,
+        thresholds: Thresholds,
+        primaryRisk: PrimaryRisk,
+        preferences: DisplayPreferences,
+    ): List<String> = buildList {
+        if (primaryRisk != PrimaryRisk.Rain && snapshot.rainChance >= thresholds.rainChance) {
+            add("Rain risk is also elevated, so keep wet weather gear nearby.")
+        }
+        if (primaryRisk != PrimaryRisk.Uv && snapshot.uvIndex >= thresholds.uvIndex) {
+            add("UV is also high, so keep sunscreen or a hat ready.")
+        }
+        if (primaryRisk != PrimaryRisk.Wind && snapshot.windSpeedKph >= thresholds.windSpeed) {
+            add("Wind is also strong, so secure loose items before leaving.")
+        }
+        if (primaryRisk != PrimaryRisk.Heat && snapshot.feelsLikeCelsius >= thresholds.feelsLikeCelsius) {
+            add("It also feels like ${formatTemperature(snapshot.feelsLikeCelsius, preferences.temperatureUnit)}, so take water.")
+        }
+    }
+
+    private fun formatTemperature(
+        temperatureCelsius: Double,
+        unit: TemperatureUnit,
+    ): String =
+        when (unit) {
+            TemperatureUnit.Celsius -> "${temperatureCelsius.format(0)}\u00B0C"
+            TemperatureUnit.Fahrenheit -> "${(temperatureCelsius * 9 / 5 + 32).format(0)}\u00B0F"
+        }
+
     private fun Double.format(decimals: Int): String =
         "%.${decimals}f".format(this)
 }
-
