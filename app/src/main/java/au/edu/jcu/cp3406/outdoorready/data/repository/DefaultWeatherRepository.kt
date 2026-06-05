@@ -9,11 +9,14 @@ import com.squareup.moshi.JsonEncodingException
 import java.io.IOException
 import java.time.Instant
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import retrofit2.HttpException
 
 class DefaultWeatherRepository @Inject constructor(
     private val apiService: OpenMeteoApiService,
 ) : WeatherRepository {
+    private var lastSuccessfulSnapshot: WeatherSnapshot? = null
+
     override suspend fun loadWeather(preferences: DisplayPreferences): WeatherLoadResult {
         val locationQuery = preferences.locationQuery.trim()
         if (locationQuery.isBlank()) {
@@ -58,9 +61,14 @@ class DefaultWeatherRepository @Inject constructor(
                 fetchedAt = Instant.now(),
             )
 
+            lastSuccessfulSnapshot = snapshot
             WeatherLoadResult.Success(snapshot)
         } catch (_: IOException) {
-            WeatherLoadResult.Success(offlineSnapshot(locationQuery))
+            cachedSnapshot(locationQuery)?.let { snapshot ->
+                WeatherLoadResult.Success(snapshot)
+            } ?: WeatherLoadResult.Failure(
+                "Live weather is unavailable. Check your connection and try again.",
+            )
         } catch (exception: HttpException) {
             WeatherLoadResult.Failure(
                 "Weather service returned error ${exception.code()}. Try refreshing in a moment.",
@@ -69,23 +77,22 @@ class DefaultWeatherRepository @Inject constructor(
             WeatherLoadResult.Failure("Weather data changed format. Try refreshing in a moment.")
         } catch (_: JsonEncodingException) {
             WeatherLoadResult.Failure("Weather data could not be read. Try refreshing in a moment.")
+        } catch (exception: CancellationException) {
+            throw exception
         } catch (_: Exception) {
             WeatherLoadResult.Failure("Couldn't load the latest conditions. Try refreshing in a moment.")
         }
     }
 
-    private fun offlineSnapshot(locationQuery: String): WeatherSnapshot =
-        WeatherSnapshot(
-            locationName = locationQuery.ifBlank { "Townsville" },
-            conditionLabel = "Offline estimate",
-            temperatureCelsius = 26.0,
-            feelsLikeCelsius = 27.0,
-            rainChance = 20,
-            uvIndex = 4.0,
-            windSpeedKph = 12.0,
-            fetchedAt = Instant.now(),
-            isFallback = true,
-        )
+    private fun cachedSnapshot(locationQuery: String): WeatherSnapshot? =
+        lastSuccessfulSnapshot
+            ?.takeIf { snapshot ->
+                snapshot.locationName.contains(locationQuery, ignoreCase = true)
+            }
+            ?.copy(
+                fetchedAt = Instant.now(),
+                isFallback = true,
+            )
 
     private fun LocationResultDto.displayName(): String =
         listOfNotNull(name, admin1).distinct().joinToString(", ")
