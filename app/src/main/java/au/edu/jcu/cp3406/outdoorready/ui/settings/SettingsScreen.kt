@@ -25,8 +25,6 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -46,7 +44,6 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
-    val locationFocusRequester = FocusRequester()
     val keyboardController = LocalSoftwareKeyboardController.current
 
     LazyColumn(
@@ -73,9 +70,7 @@ fun SettingsScreen(
                 OutlinedTextField(
                     value = state.draftLocationQuery,
                     onValueChange = viewModel::onDraftLocationChange,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(locationFocusRequester),
+                    modifier = Modifier.fillMaxWidth(),
                     label = { Text("City or suburb") },
                     leadingIcon = {
                         Icon(
@@ -105,7 +100,10 @@ fun SettingsScreen(
                         imeAction = ImeAction.Done,
                     ),
                     keyboardActions = KeyboardActions(
-                        onDone = { viewModel.applyLocation() },
+                        onDone = {
+                            viewModel.applyLocation()
+                            keyboardController?.hide()
+                        },
                     ),
                 )
                 Row(
@@ -116,8 +114,7 @@ fun SettingsScreen(
                         AssistChip(
                             onClick = {
                                 viewModel.useSuggestedLocation(location)
-                                locationFocusRequester.requestFocus()
-                                keyboardController?.show()
+                                keyboardController?.hide()
                             },
                             label = { Text(location) },
                         )
@@ -126,8 +123,7 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         viewModel.applyLocation()
-                        locationFocusRequester.requestFocus()
-                        keyboardController?.show()
+                        keyboardController?.hide()
                     },
                     enabled = state.canApplyLocation,
                     modifier = Modifier.fillMaxWidth(),

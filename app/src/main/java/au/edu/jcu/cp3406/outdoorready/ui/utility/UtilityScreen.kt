@@ -109,11 +109,11 @@ fun UtilityScreen(
                 }
                 if (state.snapshot.isFallback) {
                     item {
-                        Text(
-                            text = "Using an offline estimate because live weather did not respond. Refresh when the connection is stable.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+	                        Text(
+	                            text = "Showing the last live conditions because the weather service did not respond. Refresh when the connection is stable.",
+	                            style = MaterialTheme.typography.bodyMedium,
+	                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+	                        )
                     }
                 }
                 item {
@@ -263,8 +263,8 @@ private fun formatTemperature(
     unit: TemperatureUnit,
 ): String =
     when (unit) {
-        TemperatureUnit.Celsius -> "${temperatureCelsius.roundToInt()} C"
-        TemperatureUnit.Fahrenheit -> "${(temperatureCelsius * 9 / 5 + 32).roundToInt()} F"
+        TemperatureUnit.Celsius -> "${temperatureCelsius.roundToInt()}\u00B0C"
+        TemperatureUnit.Fahrenheit -> "${(temperatureCelsius * 9 / 5 + 32).roundToInt()}\u00B0F"
     }
 
 private fun uvLabel(uvIndex: Double): String =
